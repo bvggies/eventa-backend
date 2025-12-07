@@ -1,13 +1,13 @@
-// Copy entire dist folder to api for Vercel
+// Copy entire dist folder to api/app for Vercel
 const fs = require('fs');
 const path = require('path');
 
 const distDir = path.join(__dirname, '../dist');
-const apiDir = path.join(__dirname, '../api');
+const apiAppDir = path.join(__dirname, '../api/app');
 
-// Create api directory if it doesn't exist
-if (!fs.existsSync(apiDir)) {
-  fs.mkdirSync(apiDir, { recursive: true });
+// Create api/app directory if it doesn't exist
+if (!fs.existsSync(apiAppDir)) {
+  fs.mkdirSync(apiAppDir, { recursive: true });
 }
 
 // Function to copy directory recursively
@@ -36,7 +36,7 @@ if (!fs.existsSync(distDir)) {
   process.exit(1);
 }
 
-// Copy entire dist folder to api
-copyDir(distDir, apiDir);
-console.log('✅ Copied dist/ to api/ for Vercel');
+// Copy entire dist folder to api/app
+copyDir(distDir, apiAppDir);
+console.log('✅ Copied dist/ to api/app/ for Vercel');
 

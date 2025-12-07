@@ -3,11 +3,11 @@
 process.env.VERCEL = '1';
 
 // Import the Express app from the compiled TypeScript
-// Since we copy the entire dist folder to api, we can require directly
+// The dist folder is copied to api/app, so we require from there
 let app;
 
 try {
-  const indexModule = require('./index.js');
+  const indexModule = require('./app/index.js');
   
   // Handle CommonJS default export
   if (indexModule.default) {
