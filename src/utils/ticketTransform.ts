@@ -38,10 +38,3 @@ export const transformTickets = (tickets: any[], includePrivateFields: boolean =
   return tickets.map(ticket => transformTicket(ticket, includePrivateFields));
 };
 
-/**
- * Transform multiple tickets
- */
-export const transformTickets = (tickets: any[]) => {
-  return tickets.map(transformTicket);
-};
-

@@ -16,8 +16,24 @@ const vibe_1 = __importDefault(require("./routes/vibe"));
 const afterparty_1 = __importDefault(require("./routes/afterparty"));
 const buzz_1 = __importDefault(require("./routes/buzz"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const safety_1 = __importDefault(require("./routes/safety"));
+const trustedContacts_1 = __importDefault(require("./routes/trustedContacts"));
 const seed_1 = require("./utils/seed");
 dotenv_1.default.config();
+// Initialize database on first request (for Vercel serverless)
+let dbInitialized = false;
+const initializeDbOnce = async () => {
+    if (!dbInitialized) {
+        try {
+            await (0, database_1.initializeDatabase)();
+            dbInitialized = true;
+            console.log('✅ Database initialized on first request');
+        }
+        catch (error) {
+            console.error('❌ Error initializing database:', error);
+        }
+    }
+};
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 5000;
 // Middleware
@@ -25,15 +41,51 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:3000', 'http://localhost:5173', '*']; // Default to allow all in development
 app.use((0, cors_1.default)({
-    origin: process.env.NODE_ENV === 'production'
-        ? allowedOrigins
-        : '*', // Allow all origins in development
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+        if (!origin)
+            return callback(null, true);
+        // In development, allow all origins
+        if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+            return callback(null, true);
+        }
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // For Vercel/production, allow common admin dashboard origins
+        const adminOrigins = [
+            'https://eventa-admin.vercel.app',
+            'https://eventa-admin-git-main',
+            'http://localhost:3000',
+            'http://localhost:5173',
+        ];
+        // Allow any vercel.app subdomain
+        if (origin.includes('.vercel.app')) {
+            return callback(null, true);
+        }
+        const isAllowed = adminOrigins.some(allowed => {
+            if (allowed.includes('*')) {
+                return origin.includes(allowed.replace('*.', ''));
+            }
+            return origin === allowed || origin.startsWith(allowed);
+        });
+        callback(null, isAllowed);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
 }));
 // Increase body size limit for image uploads (50MB)
 app.use(express_1.default.json({ limit: '50mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
+// Initialize database on first request (for Vercel serverless)
+app.use(async (req, res, next) => {
+    if (process.env.VERCEL && !dbInitialized) {
+        await initializeDbOnce();
+    }
+    next();
+});
 // Routes
 app.use('/api/auth', auth_1.default);
 app.use('/api/events', events_1.default);
@@ -44,6 +96,8 @@ app.use('/api/vibe', vibe_1.default);
 app.use('/api/afterparty', afterparty_1.default);
 app.use('/api/buzz', buzz_1.default);
 app.use('/api/admin', admin_1.default);
+app.use('/api/safety', safety_1.default);
+app.use('/api/trusted-contacts', trustedContacts_1.default);
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Eventa API is running' });

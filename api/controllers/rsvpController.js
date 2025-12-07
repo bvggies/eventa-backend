@@ -12,6 +12,10 @@ const rsvp = async (req, res) => {
         const existingRSVP = await database_1.pool.query('SELECT status FROM rsvps WHERE user_id = $1 AND event_id = $2', [req.userId, eventId]);
         const oldStatus = existingRSVP.rows[0]?.status;
         const isNewRSVP = existingRSVP.rows.length === 0;
+        // Prevent duplicate "interested" selection - if already "interested", don't allow changing to "interested" again
+        if (status === 'interested' && oldStatus === 'interested') {
+            return res.status(400).json({ error: 'You have already marked yourself as interested in this event' });
+        }
         // Update or insert RSVP
         await database_1.pool.query(`INSERT INTO rsvps (user_id, event_id, status)
        VALUES ($1, $2, $3)
