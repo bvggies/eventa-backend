@@ -2,19 +2,30 @@
 // Set Vercel environment variable before importing
 process.env.VERCEL = '1';
 
-// Change to the app directory so relative imports resolve correctly
+// Use Module._resolveFilename to properly resolve modules
+const Module = require('module');
 const path = require('path');
-const originalDir = process.cwd();
+const originalRequire = Module.prototype.require;
+
+// Override require to resolve from api/app directory
+Module.prototype.require = function(id) {
+  // If it's a relative path, resolve it relative to api/app
+  if (id.startsWith('./') || id.startsWith('../')) {
+    const appDir = path.join(__dirname, 'app');
+    const resolvedPath = path.resolve(appDir, id);
+    return originalRequire.call(this, resolvedPath);
+  }
+  // For absolute paths or node_modules, use original require
+  return originalRequire.call(this, id);
+};
 
 try {
-  // Change working directory to api/app so relative imports work
-  process.chdir(path.join(__dirname, 'app'));
-  
   // Import the Express app from the compiled TypeScript
-  const indexModule = require('./index.js');
+  // Now relative imports will resolve from api/app
+  const indexModule = require(path.join(__dirname, 'app', 'index.js'));
   
-  // Restore original directory
-  process.chdir(originalDir);
+  // Restore original require
+  Module.prototype.require = originalRequire;
   
   // Handle CommonJS default export
   let app;
@@ -35,8 +46,8 @@ try {
   // Export the Express app for Vercel
   module.exports = app;
 } catch (error) {
-  // Restore directory on error
-  process.chdir(originalDir);
+  // Restore original require on error
+  Module.prototype.require = originalRequire;
   console.error('Error loading Express app:', error);
   console.error('Error stack:', error.stack);
   throw error;
