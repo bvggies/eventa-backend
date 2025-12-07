@@ -11,6 +11,8 @@ import vibeRoutes from './routes/vibe';
 import afterpartyRoutes from './routes/afterparty';
 import buzzRoutes from './routes/buzz';
 import adminRoutes from './routes/admin';
+import safetyRoutes from './routes/safety';
+import trustedContactsRoutes from './routes/trustedContacts';
 import { seedDatabase } from './utils/seed';
 
 dotenv.config();
@@ -100,6 +102,8 @@ app.use('/api/vibe', vibeRoutes);
 app.use('/api/afterparty', afterpartyRoutes);
 app.use('/api/buzz', buzzRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/safety', safetyRoutes);
+app.use('/api/trusted-contacts', trustedContactsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

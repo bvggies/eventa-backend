@@ -19,6 +19,11 @@ export const rsvp = async (req: AuthRequest, res: Response) => {
     const oldStatus = existingRSVP.rows[0]?.status;
     const isNewRSVP = existingRSVP.rows.length === 0;
 
+    // Prevent duplicate "interested" selection - if already "interested", don't allow changing to "interested" again
+    if (status === 'interested' && oldStatus === 'interested') {
+      return res.status(400).json({ error: 'You have already marked yourself as interested in this event' });
+    }
+
     // Update or insert RSVP
     await pool.query(
       `INSERT INTO rsvps (user_id, event_id, status)

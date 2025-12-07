@@ -91,18 +91,42 @@ export const getTrendingEvents = async (req: any, res: Response) => {
 export const getNearbyEvents = async (req: any, res: Response) => {
   try {
     const { lat, lng, radius = 10 } = req.query;
-    // Simple distance calculation (can be improved with PostGIS)
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    const radiusNum = parseFloat(radius);
+
+    if (isNaN(latNum) || isNaN(lngNum) || isNaN(radiusNum)) {
+      return res.status(400).json({ error: 'Invalid coordinates or radius' });
+    }
+
+    // Simple distance calculation using subquery to avoid HAVING without GROUP BY
     const result = await pool.query(
       `SELECT *, 
-       (6371 * acos(cos(radians($1)) * cos(radians(latitude)) * 
-       cos(radians(longitude) - radians($2)) + 
-       sin(radians($1)) * sin(radians(latitude)))) AS distance
+       (6371 * acos(
+         LEAST(1.0, 
+           cos(radians($1)) * cos(radians(latitude)) * 
+           cos(radians(longitude) - radians($2)) + 
+           sin(radians($1)) * sin(radians(latitude))
+         )
+       )) AS distance
        FROM events 
-       WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-       HAVING distance < $3
+       WHERE latitude IS NOT NULL 
+         AND longitude IS NOT NULL
+         AND (6371 * acos(
+           LEAST(1.0,
+             cos(radians($1)) * cos(radians(latitude)) * 
+             cos(radians(longitude) - radians($2)) + 
+             sin(radians($1)) * sin(radians(latitude))
+           )
+         )) < $3
        ORDER BY distance
        LIMIT 20`,
-      [lat, lng, radius]
+      [latNum, lngNum, radiusNum]
     );
     res.json(transformEvents(result.rows));
   } catch (error) {

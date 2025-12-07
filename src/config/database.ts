@@ -118,8 +118,29 @@ export const initializeDatabase = async () => {
         payment_method VARCHAR(20) NOT NULL,
         payment_status VARCHAR(20) DEFAULT 'pending' CHECK (payment_status IN ('pending', 'completed', 'failed')),
         qr_code TEXT,
+        ticket_number TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Add ticket_number column if it doesn't exist
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tickets' AND column_name = 'ticket_number') THEN
+          ALTER TABLE tickets ADD COLUMN ticket_number TEXT;
+        END IF;
+      END $$;
+    `);
+
+    // Add event_name column if it doesn't exist (for manually added tickets)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tickets' AND column_name = 'event_name') THEN
+          ALTER TABLE tickets ADD COLUMN event_name VARCHAR(255);
+        END IF;
+      END $$;
     `);
 
     // Vibe ratings table
@@ -183,6 +204,35 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // After party venues table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS afterparty_venues (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL CHECK (type IN ('club', 'restaurant', 'chill-spot', 'bar', 'lounge')),
+        location TEXT NOT NULL,
+        address TEXT,
+        latitude DECIMAL(10, 8) NOT NULL,
+        longitude DECIMAL(11, 8) NOT NULL,
+        rating DECIMAL(3, 2),
+        google_place_id VARCHAR(255),
+        image TEXT,
+        phone VARCHAR(50),
+        website TEXT,
+        description TEXT,
+        is_admin_added BOOLEAN DEFAULT FALSE,
+        added_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create index for location-based queries
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_afterparty_venues_location 
+      ON afterparty_venues(latitude, longitude)
+    `);
+
     // Add views column to buzz_posts if it doesn't exist
     await client.query(`
       DO $$ 
@@ -219,6 +269,85 @@ export const initializeDatabase = async () => {
           ALTER TABLE events ADD COLUMN ticket_link TEXT;
         END IF;
       END $$;
+    `);
+
+    // Safety checks table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS safety_checks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('safe', 'check-in', 'emergency', 'location-shared', 'high-alert', 'sos-broadcast')),
+        alert_type VARCHAR(20) DEFAULT 'location-shared' CHECK (alert_type IN ('SAFE', 'ALERT', 'EMERGENCY', 'HIGH_ALERT', 'SOS')),
+        latitude DECIMAL(10, 8),
+        longitude DECIMAL(11, 8),
+        address TEXT,
+        event_name VARCHAR(255),
+        message TEXT,
+        is_emergency BOOLEAN DEFAULT FALSE,
+        is_high_alert BOOLEAN DEFAULT FALSE,
+        acknowledged_by_admin BOOLEAN DEFAULT FALSE,
+        acknowledged_at TIMESTAMP,
+        google_maps_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Add alert_type column if it doesn't exist
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'safety_checks' AND column_name = 'alert_type') THEN
+          ALTER TABLE safety_checks ADD COLUMN alert_type VARCHAR(20) DEFAULT 'location-shared';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'safety_checks' AND column_name = 'is_high_alert') THEN
+          ALTER TABLE safety_checks ADD COLUMN is_high_alert BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'safety_checks' AND column_name = 'google_maps_url') THEN
+          ALTER TABLE safety_checks ADD COLUMN google_maps_url TEXT;
+        END IF;
+      END $$;
+    `);
+
+    // Trusted contacts table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS trusted_contacts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        email VARCHAR(255),
+        relationship VARCHAR(50),
+        is_primary BOOLEAN DEFAULT FALSE,
+        can_receive_sos BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, phone)
+      )
+    `);
+
+    // Create indexes
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_trusted_contacts_user_id ON trusted_contacts(user_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_alert_type ON safety_checks(alert_type);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_is_high_alert ON safety_checks(is_high_alert) WHERE is_high_alert = TRUE;
+    `);
+
+    // Create indexes for faster queries
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_user_id ON safety_checks(user_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_status ON safety_checks(status);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_emergency ON safety_checks(is_emergency) WHERE is_emergency = TRUE;
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_safety_checks_created_at ON safety_checks(created_at DESC);
     `);
 
     console.log('Database tables initialized successfully');

@@ -30,3 +30,31 @@ export const authenticate = (
   }
 };
 
+export const requireAdmin = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Check if user is admin
+    const { pool } = await import('../config/database');
+    const result = await pool.query(
+      'SELECT is_admin FROM users WHERE id = $1',
+      [req.userId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
