@@ -2,21 +2,13 @@
 // Set Vercel environment variable before importing
 process.env.VERCEL = '1';
 
-// Change working directory to api/app so relative imports resolve correctly
 const path = require('path');
-const originalDir = process.cwd();
-const appDir = path.join(__dirname, 'app');
 
 try {
-  // Change to app directory
-  process.chdir(appDir);
-  
-  // Import the Express app from the compiled TypeScript
-  // Relative imports will now resolve from api/app
-  const indexModule = require('./index.js');
-  
-  // Restore original directory
-  process.chdir(originalDir);
+  // Import the Express app from api/app/index.js
+  // Use absolute path to avoid module resolution issues
+  const appIndexPath = path.join(__dirname, 'app', 'index.js');
+  const indexModule = require(appIndexPath);
   
   // Handle CommonJS default export
   let app;
@@ -31,15 +23,15 @@ try {
   
   if (!app || typeof app !== 'function') {
     console.error('Module exports:', Object.keys(indexModule));
+    console.error('Module type:', typeof indexModule);
     throw new Error('Could not find Express app in module exports. Got: ' + typeof app);
   }
   
   // Export the Express app for Vercel
   module.exports = app;
 } catch (error) {
-  // Restore directory on error
-  process.chdir(originalDir);
   console.error('Error loading Express app:', error);
+  console.error('Error message:', error.message);
   console.error('Error stack:', error.stack);
   throw error;
 }
