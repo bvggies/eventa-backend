@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc && node scripts/copy-api.js",
+    "vercel-build": "npm install && npm run build",
     "start": "node dist/index.js",
     "seed": "ts-node src/utils/seed.ts",
     "seed:admin": "ts-node src/utils/seedAdmin.ts",
