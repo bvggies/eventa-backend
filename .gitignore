@@ -25,14 +25,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 
 # API directory (will be generated during build)
-# Keep api/index.js and api/app/ but ignore old duplicates
-api/config/
-api/controllers/
-api/middleware/
-api/routes/
-api/utils/
-!api/index.js
-!api/app/
+# Keep api/index.js and all compiled files, but ignore api/app/ (old structure)
+api/app/
