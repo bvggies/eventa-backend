@@ -222,6 +222,14 @@ export const initializeDatabase = async () => {
     `);
 
     console.log('Database tables initialized successfully');
+    
+    // Seed admin accounts if they don't exist (for Vercel/production)
+    try {
+      const { seedAdminAccounts } = await import('../utils/seedAdmin');
+      await seedAdminAccounts();
+    } catch (seedError: any) {
+      console.warn('⚠️  Could not seed admin accounts (non-critical):', seedError.message);
+    }
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;

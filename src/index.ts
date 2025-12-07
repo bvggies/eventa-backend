@@ -15,6 +15,20 @@ import { seedDatabase } from './utils/seed';
 
 dotenv.config();
 
+// Initialize database on first request (for Vercel serverless)
+let dbInitialized = false;
+const initializeDbOnce = async () => {
+  if (!dbInitialized) {
+    try {
+      await initializeDatabase();
+      dbInitialized = true;
+      console.log('✅ Database initialized on first request');
+    } catch (error) {
+      console.error('❌ Error initializing database:', error);
+    }
+  }
+};
+
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -24,15 +38,57 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:3000', 'http://localhost:5173', '*']; // Default to allow all in development
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? allowedOrigins 
-    : '*', // Allow all origins in development
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // For Vercel/production, allow common admin dashboard origins
+    const adminOrigins = [
+      'https://eventa-admin.vercel.app',
+      'https://eventa-admin-git-main',
+      'http://localhost:3000',
+      'http://localhost:5173',
+    ];
+    
+    // Allow any vercel.app subdomain
+    if (origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    const isAllowed = adminOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        return origin.includes(allowed.replace('*.', ''));
+      }
+      return origin === allowed || origin.startsWith(allowed);
+    });
+    
+    callback(null, isAllowed);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 // Increase body size limit for image uploads (50MB)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Initialize database on first request (for Vercel serverless)
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL && !dbInitialized) {
+    await initializeDbOnce();
+  }
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
