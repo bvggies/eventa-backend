@@ -50,8 +50,19 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Eventa API is running' });
 });
 
-// Initialize database and start server
+// Root route for Vercel
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Eventa API is running', version: '1.0.0' });
+});
+
+// Initialize database (only for non-serverless environments)
 const initializeServer = async () => {
+  // Skip initialization on Vercel (serverless)
+  if (process.env.VERCEL) {
+    console.log('🚀 Running on Vercel - skipping server initialization');
+    return;
+  }
+
   try {
     console.log('🔄 Connecting to database...');
     // Test database connection
@@ -85,8 +96,6 @@ const initializeServer = async () => {
     console.error('❌ Server initialization error:', err);
     console.error('Error details:', err.message);
     console.error('Stack:', err.stack);
-    // Don't exit - allow server to start even if DB fails (for testing)
-    // process.exit(1);
     
     // Start server anyway for testing
     app.listen(PORT, '0.0.0.0', () => {
@@ -97,7 +106,11 @@ const initializeServer = async () => {
   }
 };
 
-initializeServer();
+// Only initialize server if not on Vercel
+if (!process.env.VERCEL) {
+  initializeServer();
+}
 
+// Export app for Vercel serverless functions
 export default app;
 
