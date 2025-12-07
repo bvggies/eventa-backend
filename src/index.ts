@@ -106,9 +106,16 @@ const initializeServer = async () => {
   }
 };
 
-// Only initialize server if not on Vercel
-if (!process.env.VERCEL) {
+// Only initialize server if not on Vercel or serverless environment
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.FUNCTION_TARGET;
+
+if (!isServerless) {
+  // Regular server mode - initialize and listen
   initializeServer();
+} else {
+  // Serverless mode - skip server initialization
+  // Database will be initialized lazily on first request
+  console.log('🚀 Running in serverless mode - skipping server initialization');
 }
 
 // Export app for Vercel serverless functions
