@@ -11,20 +11,20 @@ router.get('/events/:eventId/groups', groupController.getEventGroups);
 router.use(authenticate);
 
 // Create event group
-router.post('/groups', groupController.createEventGroup);
+router.post('/', groupController.createEventGroup);
 
 // Join event group by invite code
-router.post('/groups/join', groupController.joinEventGroup);
+router.post('/join', groupController.joinEventGroup);
 
 // Get group details
-router.get('/groups/:groupId', groupController.getGroupDetails);
+router.get('/:groupId', groupController.getGroupDetails);
 
 // Leave event group
-router.delete('/groups/:groupId/leave', groupController.leaveEventGroup);
+router.delete('/:groupId/leave', groupController.leaveEventGroup);
 
 // Group chat
-router.post('/groups/:groupId/messages', groupController.sendGroupMessage);
-router.get('/groups/:groupId/messages', groupController.getGroupMessages);
+router.post('/:groupId/messages', groupController.sendGroupMessage);
+router.get('/:groupId/messages', groupController.getGroupMessages);
 
 export default router;
 

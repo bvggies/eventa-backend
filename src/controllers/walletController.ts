@@ -150,8 +150,19 @@ export const awardPoints = async (
          updated_at = CURRENT_TIMESTAMP`,
       [userId, points, coins]
     );
-  } catch (error) {
-    console.error('Error awarding points:', error);
+  } catch (error: any) {
+    console.error('❌ Error in awardPoints function:', {
+      userId,
+      points,
+      coins,
+      sourceType,
+      sourceId,
+      description,
+      error: error?.message || error,
+      stack: error?.stack,
+      code: error?.code,
+      detail: error?.detail,
+    });
     throw error;
   }
 };

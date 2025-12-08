@@ -11,7 +11,7 @@ router.get('/events/:eventId/reviews', reviewController.getEventReviews);
 router.use(authenticate);
 
 // Submit event review
-router.post('/reviews', reviewController.submitEventReview);
+router.post('/', reviewController.submitEventReview);
 
 // Get user's review for an event
 router.get('/events/:eventId/reviews/me', reviewController.getUserReview);

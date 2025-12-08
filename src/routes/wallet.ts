@@ -8,16 +8,16 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get user wallet
-router.get('/wallet', walletController.getUserWallet);
+router.get('/', walletController.getUserWallet);
 
 // Get points transactions history
-router.get('/wallet/transactions', walletController.getPointsTransactions);
+router.get('/transactions', walletController.getPointsTransactions);
 
 // Get available rewards
-router.get('/wallet/rewards', walletController.getAvailableRewards);
+router.get('/rewards', walletController.getAvailableRewards);
 
 // Redeem points for rewards
-router.post('/wallet/redeem', walletController.redeemPoints);
+router.post('/redeem', walletController.redeemPoints);
 
 export default router;
 

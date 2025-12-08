@@ -129,12 +129,18 @@ export const createPost = async (req: AuthRequest, res: Response) => {
         result.rows[0].id,
         'Posted on Buzz'
       );
+      console.log(`✅ Points awarded: User ${req.userId} earned 15 points + 15 coins for Buzz post ${result.rows[0].id}`);
 
       // Check and award badges
       const { checkAndAwardBadges } = await import('./badgeController');
       await checkAndAwardBadges(req.userId);
-    } catch (pointsError) {
-      console.error('Error awarding points for buzz post:', pointsError);
+    } catch (pointsError: any) {
+      console.error('❌ Error awarding points for buzz post:', {
+        userId: req.userId,
+        postId: result.rows[0].id,
+        error: pointsError?.message || pointsError,
+        stack: pointsError?.stack,
+      });
       // Don't fail the post creation if points fail
     }
 

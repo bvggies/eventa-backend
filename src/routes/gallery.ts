@@ -11,16 +11,16 @@ router.get('/events/:eventId/gallery', galleryController.getEventGallery);
 router.use(authenticate);
 
 // Upload media to event gallery
-router.post('/gallery', galleryController.uploadGalleryMedia);
+router.post('/', galleryController.uploadGalleryMedia);
 
 // Tag user in gallery media
-router.post('/gallery/:galleryId/tags', galleryController.tagUserInGallery);
+router.post('/:galleryId/tags', galleryController.tagUserInGallery);
 
 // Remove tag from gallery media
-router.delete('/gallery/:galleryId/tags/:tagId', galleryController.removeGalleryTag);
+router.delete('/:galleryId/tags/:tagId', galleryController.removeGalleryTag);
 
 // Mark media as highlight (organizer only)
-router.patch('/gallery/:galleryId/highlight', galleryController.markAsHighlight);
+router.patch('/:galleryId/highlight', galleryController.markAsHighlight);
 
 export default router;
 

@@ -430,3 +430,143 @@ export const getFinancialData = async (req: AdminRequest, res: Response) => {
   }
 };
 
+// Get all badges (admin only)
+export const getAllBadges = async (req: AdminRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM badges ORDER BY category, name`
+    );
+    res.json({ badges: result.rows });
+  } catch (error) {
+    console.error('Error fetching badges:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get user badges (admin only)
+export const getUserBadges = async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `SELECT 
+        ub.*,
+        b.name,
+        b.display_name,
+        b.description,
+        b.icon,
+        b.category
+      FROM user_badges ub
+      INNER JOIN badges b ON b.id = ub.badge_id
+      WHERE ub.user_id = $1
+      ORDER BY ub.earned_at DESC`,
+      [userId]
+    );
+
+    res.json({ badges: result.rows });
+  } catch (error) {
+    console.error('Error fetching user badges:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Award badge to user (admin only)
+export const awardBadgeToUser = async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId, badgeId } = req.body;
+
+    if (!userId || !badgeId) {
+      return res.status(400).json({ error: 'User ID and Badge ID are required' });
+    }
+
+    // Verify user exists
+    const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify badge exists
+    const badgeCheck = await pool.query('SELECT id, display_name FROM badges WHERE id = $1', [badgeId]);
+    if (badgeCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Badge not found' });
+    }
+
+    // Check if user already has this badge
+    const existing = await pool.query(
+      'SELECT id FROM user_badges WHERE user_id = $1 AND badge_id = $2',
+      [userId, badgeId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'User already has this badge' });
+    }
+
+    // Award the badge
+    const result = await pool.query(
+      `INSERT INTO user_badges (user_id, badge_id)
+       VALUES ($1, $2)
+       RETURNING *`,
+      [userId, badgeId]
+    );
+
+    console.log(`✅ Admin ${req.userId} awarded badge ${badgeCheck.rows[0].display_name} to user ${userCheck.rows[0].name}`);
+
+    res.json({
+      message: 'Badge awarded successfully',
+      userBadge: result.rows[0],
+      badge: badgeCheck.rows[0],
+      user: userCheck.rows[0],
+    });
+  } catch (error: any) {
+    console.error('Error awarding badge:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ error: 'User already has this badge' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Remove badge from user (admin only)
+export const removeBadgeFromUser = async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId, badgeId } = req.body;
+
+    if (!userId || !badgeId) {
+      return res.status(400).json({ error: 'User ID and Badge ID are required' });
+    }
+
+    // Verify user exists
+    const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify badge exists
+    const badgeCheck = await pool.query('SELECT id, display_name FROM badges WHERE id = $1', [badgeId]);
+    if (badgeCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Badge not found' });
+    }
+
+    // Remove the badge
+    const result = await pool.query(
+      'DELETE FROM user_badges WHERE user_id = $1 AND badge_id = $2 RETURNING *',
+      [userId, badgeId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User does not have this badge' });
+    }
+
+    console.log(`✅ Admin ${req.userId} removed badge ${badgeCheck.rows[0].display_name} from user ${userCheck.rows[0].name}`);
+
+    res.json({
+      message: 'Badge removed successfully',
+      badge: badgeCheck.rows[0],
+      user: userCheck.rows[0],
+    });
+  } catch (error) {
+    console.error('Error removing badge:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+

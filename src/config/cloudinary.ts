@@ -3,12 +3,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Configure Cloudinary - supports both CLOUDINARY_URL and individual variables
+if (process.env.CLOUDINARY_URL) {
+  // Use CLOUDINARY_URL if provided (standard format)
+  // Cloudinary SDK automatically reads from CLOUDINARY_URL env var
+  cloudinary.config();
+} else {
+  // Fall back to individual environment variables
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 export { cloudinary };
 

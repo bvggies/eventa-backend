@@ -8,6 +8,10 @@ import {
   getNotifications,
   getRecentActivity,
   getFinancialData,
+  getAllBadges,
+  getUserBadges,
+  awardBadgeToUser,
+  removeBadgeFromUser,
 } from '../controllers/adminController';
 import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/adminAuth';
@@ -29,6 +33,12 @@ router.get('/analytics', getAnalytics);
 router.get('/notifications', getNotifications);
 router.get('/activity', getRecentActivity);
 router.get('/financial', getFinancialData);
+
+// Badge management
+router.get('/badges', getAllBadges);
+router.get('/users/:userId/badges', getUserBadges);
+router.post('/badges/award', awardBadgeToUser);
+router.post('/badges/remove', removeBadgeFromUser);
 
 export default router;
 
