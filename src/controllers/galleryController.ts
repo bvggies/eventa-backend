@@ -26,6 +26,25 @@ export const uploadGalleryMedia = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'You must have attended the event to upload media' });
     }
 
+    // Upload to Cloudinary
+    let mediaUrl: string;
+    try {
+      if (mediaType === 'video') {
+        mediaUrl = await uploadVideo(mediaBase64, `eventa/gallery/${eventId}`);
+      } else {
+        mediaUrl = await uploadImage(mediaBase64, `eventa/gallery/${eventId}`);
+      }
+    } catch (uploadError: any) {
+      console.error('Cloudinary upload error:', uploadError);
+      return res.status(500).json({ 
+        error: 'Failed to upload media. Please check your Cloudinary configuration.' 
+      });
+    }
+
+    if (!req.userId) {
+      return res.status(401).json({ error: 'User ID not found' });
+    }
+
     const result = await pool.query(
       `INSERT INTO event_gallery (event_id, user_id, media_url, media_type, caption, is_highlight)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -35,24 +54,19 @@ export const uploadGalleryMedia = async (req: AuthRequest, res: Response) => {
 
     // Award points for gallery upload
     try {
-      await pool.query(
-        `INSERT INTO points_transactions (user_id, transaction_type, points_amount, coins_amount, source_type, source_id, description)
-         VALUES ($1, 'earn', 10, 10, 'gallery_upload', $2, 'Uploaded media to event gallery')`,
-        [req.userId, result.rows[0].id]
+      const { awardPoints } = await import('./walletController');
+      await awardPoints(
+        req.userId,
+        10, // 10 points for gallery upload
+        10, // 10 coins for gallery upload
+        'gallery_upload',
+        result.rows[0].id,
+        'Uploaded media to event gallery'
       );
 
-      // Update wallet
-      await pool.query(
-        `INSERT INTO user_wallets (user_id, points_balance, coins_balance, total_earned)
-         VALUES ($1, 10, 10, 10)
-         ON CONFLICT (user_id) 
-         DO UPDATE SET 
-           points_balance = user_wallets.points_balance + 10,
-           coins_balance = user_wallets.coins_balance + 10,
-           total_earned = user_wallets.total_earned + 10,
-           updated_at = CURRENT_TIMESTAMP`,
-        [req.userId]
-      );
+      // Check and award badges
+      const { checkAndAwardBadges } = await import('./badgeController');
+      await checkAndAwardBadges(req.userId);
     } catch (pointsError) {
       console.error('Error awarding points for gallery upload:', pointsError);
       // Don't fail the upload if points fail
