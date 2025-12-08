@@ -11,6 +11,7 @@
     "seed": "ts-node src/utils/seed.ts",
     "seed:admin": "ts-node src/utils/seedAdmin.ts",
     "seed:all": "ts-node src/utils/seedAll.ts",
+    "init:db": "ts-node scripts/init-db.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

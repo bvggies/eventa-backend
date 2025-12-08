@@ -115,6 +115,26 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       ]
     );
 
+    // Award points for creating a buzz post
+    try {
+      const { awardPoints } = await import('./walletController');
+      await awardPoints(
+        req.userId,
+        15, // 15 points for posting on Buzz
+        15, // 15 coins for posting on Buzz
+        'buzz_post',
+        result.rows[0].id,
+        'Posted on Buzz'
+      );
+
+      // Check and award badges
+      const { checkAndAwardBadges } = await import('./badgeController');
+      await checkAndAwardBadges(req.userId);
+    } catch (pointsError) {
+      console.error('Error awarding points for buzz post:', pointsError);
+      // Don't fail the post creation if points fail
+    }
+
     // Fetch the full post with user info
     const fullPostResult = await pool.query(
       `SELECT 

@@ -81,6 +81,26 @@ export const buyTicket = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Award points for ticket purchase
+    try {
+      const { awardPoints } = await import('./walletController');
+      await awardPoints(
+        req.userId,
+        50, // 50 points for buying a ticket
+        50, // 50 coins for buying a ticket
+        'ticket_purchase',
+        result.rows[0].id,
+        `Purchased ${quantity} ticket(s)`
+      );
+
+      // Check and award badges
+      const { checkAndAwardBadges } = await import('./badgeController');
+      await checkAndAwardBadges(req.userId);
+    } catch (pointsError) {
+      console.error('Error awarding points for ticket purchase:', pointsError);
+      // Don't fail the ticket creation if points fail
+    }
+
     res.status(201).json(transformTicket(result.rows[0]));
   } catch (error) {
     console.error('Error buying ticket:', error);

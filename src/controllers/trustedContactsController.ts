@@ -159,10 +159,10 @@ export const getPrimaryTrustedContact = async (req: AuthRequest, res: Response) 
     );
 
     if (result.rows.length === 0) {
-      return res.json(null);
+      return res.status(200).json(null);
     }
 
-    res.json({
+    res.status(200).json({
       id: result.rows[0].id,
       name: result.rows[0].name,
       phone: result.rows[0].phone,

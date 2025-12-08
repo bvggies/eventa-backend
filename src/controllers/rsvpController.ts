@@ -53,6 +53,28 @@ export const rsvp = async (req: AuthRequest, res: Response) => {
       // If both old and new status count as going (e.g., "interested" to "going"), no change needed
     }
 
+    // Award points for attending event (only if status is 'going' and it's a new RSVP)
+    if (status === 'going' && isNewRSVP) {
+      try {
+        const { awardPoints } = await import('./walletController');
+        await awardPoints(
+          req.userId,
+          30, // 30 points for attending an event
+          30, // 30 coins for attending an event
+          'event_attendance',
+          eventId,
+          'Attending event'
+        );
+
+        // Check and award badges
+        const { checkAndAwardBadges } = await import('./badgeController');
+        await checkAndAwardBadges(req.userId);
+      } catch (pointsError) {
+        console.error('Error awarding points for event attendance:', pointsError);
+        // Don't fail the RSVP if points fail
+      }
+    }
+
     res.json({ message: 'RSVP updated successfully' });
   } catch (error) {
     console.error('Error updating RSVP:', error);

@@ -350,6 +350,217 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_safety_checks_created_at ON safety_checks(created_at DESC);
     `);
 
+    // User follows table (for attendee visibility)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_follows (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        follower_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        following_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(follower_id, following_id),
+        CHECK (follower_id != following_id)
+      )
+    `);
+
+    // Event groups table (for group attendance)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_groups (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+        creator_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        invite_code VARCHAR(50) UNIQUE NOT NULL,
+        max_members INTEGER DEFAULT 50,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Group members table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS group_members (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        group_id UUID REFERENCES event_groups(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) DEFAULT 'member' CHECK (role IN ('creator', 'admin', 'member')),
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(group_id, user_id)
+      )
+    `);
+
+    // Group chat messages table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS group_chat_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        group_id UUID REFERENCES event_groups(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Event gallery table (post-event photos/videos)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_gallery (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        media_url TEXT NOT NULL,
+        media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('image', 'video')),
+        caption TEXT,
+        is_highlight BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Gallery tags table (tagging people in photos)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS gallery_tags (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        gallery_id UUID REFERENCES event_gallery(id) ON DELETE CASCADE,
+        tagged_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        tagged_by_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        x_position DECIMAL(5, 2),
+        y_position DECIMAL(5, 2),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(gallery_id, tagged_user_id)
+      )
+    `);
+
+    // Event reviews table (detailed ratings)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_reviews (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        overall_rating DECIMAL(2, 1) NOT NULL CHECK (overall_rating >= 1 AND overall_rating <= 5),
+        crowd_rating DECIMAL(2, 1) CHECK (crowd_rating >= 1 AND crowd_rating <= 5),
+        music_rating DECIMAL(2, 1) CHECK (music_rating >= 1 AND music_rating <= 5),
+        security_rating DECIMAL(2, 1) CHECK (security_rating >= 1 AND security_rating <= 5),
+        drinks_rating DECIMAL(2, 1) CHECK (drinks_rating >= 1 AND drinks_rating <= 5),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(event_id, user_id)
+      )
+    `);
+
+    // Wallet/points system
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_wallets (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        points_balance INTEGER DEFAULT 0,
+        coins_balance INTEGER DEFAULT 0,
+        total_earned INTEGER DEFAULT 0,
+        total_redeemed INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Points transactions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS points_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('earn', 'redeem', 'bonus', 'penalty')),
+        points_amount INTEGER NOT NULL,
+        coins_amount INTEGER DEFAULT 0,
+        source_type VARCHAR(50) NOT NULL CHECK (source_type IN ('event_attendance', 'buzz_post', 'invite_friend', 'ticket_purchase', 'review_submission', 'gallery_upload', 'discount', 'free_ticket', 'vip_upgrade', 'admin_adjustment')),
+        source_id UUID,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Badges table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(100) UNIQUE NOT NULL,
+        display_name VARCHAR(100) NOT NULL,
+        description TEXT,
+        icon VARCHAR(50),
+        category VARCHAR(50) CHECK (category IN ('attendance', 'social', 'engagement', 'special')),
+        requirement_type VARCHAR(50),
+        requirement_value INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // User badges table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        badge_id UUID REFERENCES badges(id) ON DELETE CASCADE,
+        earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, badge_id)
+      )
+    `);
+
+    // Icebreaker chats table (for attendee connections)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS icebreaker_chats (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+        user1_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user2_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        initiated_by UUID REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'archived', 'blocked')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(event_id, user1_id, user2_id)
+      )
+    `);
+
+    // Icebreaker messages table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS icebreaker_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        chat_id UUID REFERENCES icebreaker_chats(id) ON DELETE CASCADE,
+        sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes for new tables
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id);
+      CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
+      CREATE INDEX IF NOT EXISTS idx_event_groups_event ON event_groups(event_id);
+      CREATE INDEX IF NOT EXISTS idx_event_groups_invite_code ON event_groups(invite_code);
+      CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id);
+      CREATE INDEX IF NOT EXISTS idx_group_chat_messages_group ON group_chat_messages(group_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_event_gallery_event ON event_gallery(event_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_event_gallery_highlight ON event_gallery(event_id, is_highlight) WHERE is_highlight = TRUE;
+      CREATE INDEX IF NOT EXISTS idx_gallery_tags_gallery ON gallery_tags(gallery_id);
+      CREATE INDEX IF NOT EXISTS idx_event_reviews_event ON event_reviews(event_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_points_transactions_user ON points_transactions(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
+      CREATE INDEX IF NOT EXISTS idx_icebreaker_chats_event ON icebreaker_chats(event_id);
+      CREATE INDEX IF NOT EXISTS idx_icebreaker_messages_chat ON icebreaker_messages(chat_id, created_at DESC);
+    `);
+
+    // Add wallet columns to users table if they don't exist
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'bio') THEN
+          ALTER TABLE users ADD COLUMN bio TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'followers_count') THEN
+          ALTER TABLE users ADD COLUMN followers_count INTEGER DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'following_count') THEN
+          ALTER TABLE users ADD COLUMN following_count INTEGER DEFAULT 0;
+        END IF;
+      END $$;
+    `);
+
     console.log('Database tables initialized successfully');
     
     // Seed admin accounts if they don't exist (for Vercel/production)
@@ -358,6 +569,14 @@ export const initializeDatabase = async () => {
       await seedAdminAccounts();
     } catch (seedError: any) {
       console.warn('⚠️  Could not seed admin accounts (non-critical):', seedError.message);
+    }
+
+    // Seed badges if they don't exist
+    try {
+      const { seedBadges } = await import('../utils/seedBadges');
+      await seedBadges();
+    } catch (seedError: any) {
+      console.warn('⚠️  Could not seed badges (non-critical):', seedError.message);
     }
   } catch (error) {
     console.error('Error initializing database:', error);

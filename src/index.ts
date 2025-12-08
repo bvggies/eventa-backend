@@ -13,6 +13,13 @@ import buzzRoutes from './routes/buzz';
 import adminRoutes from './routes/admin';
 import safetyRoutes from './routes/safety';
 import trustedContactsRoutes from './routes/trustedContacts';
+import attendeeRoutes from './routes/attendees';
+import icebreakerRoutes from './routes/icebreaker';
+import groupRoutes from './routes/groups';
+import galleryRoutes from './routes/gallery';
+import reviewRoutes from './routes/reviews';
+import walletRoutes from './routes/wallet';
+import badgeRoutes from './routes/badges';
 import { seedDatabase } from './utils/seed';
 
 dotenv.config();
@@ -104,6 +111,13 @@ app.use('/api/buzz', buzzRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/safety', safetyRoutes);
 app.use('/api/trusted-contacts', trustedContactsRoutes);
+app.use('/api/attendees', attendeeRoutes);
+app.use('/api/icebreaker', icebreakerRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/gallery', galleryRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/badges', badgeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
