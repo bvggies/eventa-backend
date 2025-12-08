@@ -56,6 +56,9 @@ export const rsvp = async (req: AuthRequest, res: Response) => {
     // Award points for attending event (only if status is 'going' and it's a new RSVP)
     if (status === 'going' && isNewRSVP) {
       try {
+        if (!req.userId) {
+          throw new Error('User ID not found');
+        }
         const { awardPoints } = await import('./walletController');
         await awardPoints(
           req.userId,

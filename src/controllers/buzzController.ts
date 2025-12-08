@@ -117,6 +117,9 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 
     // Award points for creating a buzz post
     try {
+      if (!req.userId) {
+        throw new Error('User ID not found');
+      }
       const { awardPoints } = await import('./walletController');
       await awardPoints(
         req.userId,
