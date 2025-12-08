@@ -30,6 +30,36 @@ export const authenticate = (
   }
 };
 
+// Optional authentication - sets userId if token is present, but doesn't require it
+export const optionalAuthenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || 'your-secret-key'
+        ) as { userId: string };
+
+        req.userId = decoded.userId;
+      } catch (error) {
+        // Invalid token, but continue without authentication
+        req.userId = undefined;
+      }
+    }
+
+    next();
+  } catch (error) {
+    // Continue without authentication
+    next();
+  }
+};
+
 export const requireAdmin = async (
   req: AuthRequest,
   res: Response,

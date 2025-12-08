@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import * as badgeController from '../controllers/badgeController';
 
 const router = express.Router();
 
 // Get all badges (public, but shows earned status if authenticated)
-router.get('/', badgeController.getAllBadges);
+router.get('/', optionalAuthenticate, badgeController.getAllBadges);
 
 // All other routes require authentication
 router.use(authenticate);
