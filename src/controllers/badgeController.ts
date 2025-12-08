@@ -15,13 +15,39 @@ export const getAllBadges = async (req: Request, res: Response) => {
         ELSE FALSE END as is_earned,
         CASE WHEN $1::uuid IS NOT NULL THEN 
           (SELECT earned_at FROM user_badges WHERE user_id = $1 AND badge_id = b.id)
-        ELSE NULL END as earned_at
+        ELSE NULL END as earned_at,
+        CASE 
+          WHEN b.requirement_type = 'events_attended' AND $1::uuid IS NOT NULL THEN
+            (SELECT COUNT(DISTINCT event_id) FROM tickets WHERE user_id = $1 AND payment_status = 'completed') +
+            (SELECT COUNT(DISTINCT event_id) FROM rsvps WHERE user_id = $1 AND status = 'going')
+          WHEN b.requirement_type = 'buzz_posts' AND $1::uuid IS NOT NULL THEN
+            (SELECT COUNT(*) FROM buzz_posts WHERE user_id = $1)
+          WHEN b.requirement_type = 'following_count' AND $1::uuid IS NOT NULL THEN
+            (SELECT following_count FROM users WHERE id = $1)
+          WHEN b.requirement_type = 'reviews_submitted' AND $1::uuid IS NOT NULL THEN
+            (SELECT COUNT(*) FROM event_reviews WHERE user_id = $1)
+          WHEN b.requirement_type = 'gallery_uploads' AND $1::uuid IS NOT NULL THEN
+            (SELECT COUNT(*) FROM event_gallery WHERE user_id = $1)
+          WHEN b.requirement_type = 'groups_created' AND $1::uuid IS NOT NULL THEN
+            (SELECT COUNT(*) FROM event_groups WHERE creator_id = $1)
+          ELSE 0
+        END as current_progress
       FROM badges b
       ORDER BY b.category, b.name`,
       [userId]
     );
 
-    res.json({ badges: result.rows });
+    // Add progress information for badges with requirements
+    const badgesWithProgress = result.rows.map((badge) => ({
+      ...badge,
+      progress: badge.current_progress || 0,
+      requirement: badge.requirement_value || null,
+      percentage: badge.requirement_value 
+        ? Math.min(((badge.current_progress || 0) / badge.requirement_value) * 100, 100)
+        : (badge.is_earned ? 100 : 0),
+    }));
+
+    res.json({ badges: badgesWithProgress });
   } catch (error) {
     console.error('Error fetching badges:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -185,7 +211,7 @@ export const getBadgeProgress = async (req: AuthRequest, res: Response) => {
         END as current_progress
       FROM badges b
       LEFT JOIN user_badges ub ON ub.badge_id = b.id AND ub.user_id = $1
-      WHERE b.requirement_type IS NOT NULL
+      WHERE b.requirement_type IS NOT NULL OR ub.id IS NOT NULL
       ORDER BY b.category, b.name`,
       [req.userId]
     );
@@ -193,10 +219,10 @@ export const getBadgeProgress = async (req: AuthRequest, res: Response) => {
     const badgesWithProgress = result.rows.map((badge) => ({
       ...badge,
       progress: badge.current_progress || 0,
-      requirement: badge.requirement_value || 0,
+      requirement: badge.requirement_value || null,
       percentage: badge.requirement_value 
-        ? Math.min((badge.current_progress / badge.requirement_value) * 100, 100)
-        : 0,
+        ? Math.min(((badge.current_progress || 0) / badge.requirement_value) * 100, 100)
+        : (badge.is_earned ? 100 : 0),
     }));
 
     res.json({ badges: badgesWithProgress });
