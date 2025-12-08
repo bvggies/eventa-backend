@@ -34,6 +34,13 @@ export const getAllPosts = async (req: any, res: Response) => {
 export const getPostById = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
+    
     const result = await pool.query(
       `SELECT 
         bp.*,
@@ -174,6 +181,12 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const likePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
 
     // Check if already liked
     const existing = await pool.query(
@@ -205,6 +218,13 @@ export const likePost = async (req: AuthRequest, res: Response) => {
 export const incrementViews = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
+    
     await pool.query(
       'UPDATE buzz_posts SET views = views + 1 WHERE id = $1',
       [id]
@@ -220,6 +240,12 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({ error: 'Comment content is required' });
@@ -242,6 +268,12 @@ export const addComment = async (req: AuthRequest, res: Response) => {
 export const addShare = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
 
     // Check if already shared by this user
     const existing = await pool.query(
@@ -267,6 +299,13 @@ export const addShare = async (req: AuthRequest, res: Response) => {
 export const getCommentsByPostId = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
+    
     const result = await pool.query(
       `SELECT 
         bc.*,

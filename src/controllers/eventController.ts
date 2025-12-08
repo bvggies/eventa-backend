@@ -48,6 +48,13 @@ export const getAllEvents = async (req: any, res: Response) => {
 export const getEventById = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid event ID format' });
+    }
+    
     const result = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
 
     if (result.rows.length === 0) {
@@ -212,6 +219,13 @@ export const createEvent = async (req: AuthRequest, res: Response) => {
 export const updateEvent = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid event ID format' });
+    }
+    
     const updates = req.body;
 
     // Verify event exists
@@ -284,6 +298,12 @@ export const updateEvent = async (req: AuthRequest, res: Response) => {
 export const deleteEvent = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid event ID format' });
+    }
 
     // Verify event exists
     const eventResult = await pool.query(

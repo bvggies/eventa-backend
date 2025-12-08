@@ -69,8 +69,8 @@ export const buyTicket = async (req: AuthRequest, res: Response) => {
     if (actualEventId) {
       try {
         await pool.query(
-          `INSERT INTO rsvps (user_id, event_id, status, created_by_save)
-           VALUES ($1, $2, 'going', false)
+          `INSERT INTO rsvps (user_id, event_id, status)
+           VALUES ($1, $2, 'going')
            ON CONFLICT (user_id, event_id) 
            DO UPDATE SET status = 'going'`,
           [req.userId, actualEventId]
@@ -136,6 +136,13 @@ export const getMyTickets = async (req: AuthRequest, res: Response) => {
 export const getTicketById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({ error: 'Invalid ticket ID format' });
+    }
+    
     const result = await pool.query(
       'SELECT * FROM tickets WHERE id = $1 AND user_id = $2',
       [id, req.userId]

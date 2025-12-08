@@ -141,12 +141,12 @@ export const awardPoints = async (
     // Update wallet
     await pool.query(
       `INSERT INTO user_wallets (user_id, points_balance, coins_balance, total_earned)
-       VALUES ($1, $2, $3, $2 + $3)
+       VALUES ($1, $2::integer, $3::integer, ($2::integer + $3::integer))
        ON CONFLICT (user_id) 
        DO UPDATE SET 
-         points_balance = user_wallets.points_balance + $2,
-         coins_balance = user_wallets.coins_balance + $3,
-         total_earned = user_wallets.total_earned + $2 + $3,
+         points_balance = user_wallets.points_balance + $2::integer,
+         coins_balance = user_wallets.coins_balance + $3::integer,
+         total_earned = user_wallets.total_earned + ($2::integer + $3::integer),
          updated_at = CURRENT_TIMESTAMP`,
       [userId, points, coins]
     );
