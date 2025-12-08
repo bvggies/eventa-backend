@@ -1,11 +1,16 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { pool } from '../config/database';
+import { uploadImage, uploadVideo } from '../config/cloudinary';
 
 // Upload media to event gallery
 export const uploadGalleryMedia = async (req: AuthRequest, res: Response) => {
   try {
-    const { eventId, mediaUrl, mediaType, caption, isHighlight = false } = req.body;
+    const { eventId, mediaBase64, mediaType, caption, isHighlight = false } = req.body;
+
+    if (!mediaBase64) {
+      return res.status(400).json({ error: 'Media data is required' });
+    }
 
     // Verify user attended the event (has ticket or RSVP)
     const attendeeCheck = await pool.query(
